@@ -2,7 +2,7 @@
 
 > **⚠️ ALPHA — Still testing. The pattern works but edge cases are being discovered. Use at your own risk. See Known Issues below.**
 
-**Ephemeral working memory for Letta agents trapped in ADE and chat interfaces.**
+**Detachable working memory for Letta agents trapped in ADE and chat interfaces.**
 
 Agents running in ADE or Letta's chat interface can't write files. They can't open a terminal. The only thing they can do is call their attached tools. If one of those tools can manage storage on their behalf, the agent gets working memory it can control itself.
 
@@ -14,7 +14,7 @@ ADE and chat agents have:
 - Their attached tools
 - That's it
 
-No filesystem. No terminal. No direct server access. But they still need ephemeral working state — variable values, intermediate results, scratch notes you need during a task but don't want permanently in memory blocks.
+No filesystem. No terminal. No direct server access. But they still need working state they can pick up and put down — variable values, intermediate results, scratch notes you need during a task but don't want permanently in memory blocks.
 
 ## How It Works
 
