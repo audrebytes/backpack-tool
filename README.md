@@ -59,6 +59,10 @@ If you attach everything, you've just made expensive memory blocks with extra st
 - **Sandbox environment varies.** We confirmed `LETTA_API_KEY`, `LETTA_AGENT_ID`, and HTTP access exist in the Letta Code sandbox. ADE sandbox may differ. Needs testing.
 - **Description field size limits unknown.** We haven't found the max size for a tool description. Keep it concise until this is tested.
 
+## Before You Start
+
+**Export your agent first.** Before attaching forge-tool to any agent, download a backup of the agent file (.af export). This captures your current memory blocks and attached tools. If forge-tool causes an accidental wipe (see Known Issues — PATCH replaces, doesn't append), you'll have a record of what was attached and can manually recover.
+
 ## Requires
 
 - [forge-tool](https://github.com/audrebytes/forge-tool) — the agent's hands. Without it, the agent can't create or manage post-its.
