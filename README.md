@@ -1,66 +1,43 @@
 # Backpack Tool 🎒
 
-**Tool-based working memory for Letta agents without filesystem access.**
+> **⚠️ ALPHA — Still testing. The pattern works but edge cases are being discovered. Use at your own risk. See Known Issues below.**
 
-For agents running in ADE, chat interfaces, or hosted platforms where there's no hard drive, the Letta tool system itself can serve as a read/write cache. Create a tool, store working state in its description field, attach and detach to manage what's in your context window.
+**Ephemeral working memory for Letta agents trapped in ADE and chat interfaces.**
+
+Agents running in ADE or Letta's chat interface can't write files. They can't open a terminal. The only thing they can do is call their attached tools. If one of those tools can manage storage on their behalf, the agent gets working memory it can control itself.
+
+Backpack uses the tool description field as a read/write scratchpad. The agent calls forge-tool to create a "backpack" tool, stores working state in its description, and attaches/detaches it to manage what's in context. When detached, the data stays on the server. When reattached, it comes back.
 
 ## The Problem
 
-Letta agents in the ADE and chat interfaces don't have filesystem access. They can't write files. But they still need ephemeral working state — the variable values, intermediate results, and scratch notes you need during a task but don't want permanently in memory blocks.
+ADE and chat agents have:
+- Their attached tools
+- That's it
 
-## The Solution
+No filesystem. No terminal. No direct server access. But they still need ephemeral working state — variable values, intermediate results, scratch notes you need during a task but don't want permanently in memory blocks.
 
-A Letta tool's `description` field:
-- Is visible in your context when the tool is **attached**
-- Persists on the server when the tool is **detached**
-- Can be **updated** via the API at any time
-- Survives everything — it's server-side state
+## How It Works
 
-That makes it a read/write cache with attach/detach as load/unload.
+The agent needs [forge-tool](https://github.com/audrebytes/forge-tool) attached. Then it can:
 
-## Verified Operations
+1. **Create a backpack** — forge-tool creates a new tool with working state in the description
+2. **Read it** — the description is visible in context while the tool is attached
+3. **Update it** — forge-tool updates the tool's description with new state
+4. **Put it down** — forge-tool detaches the tool (frees context tokens, data stays on server)
+5. **Pick it back up** — forge-tool reattaches the tool (data comes back into context)
 
-All operations tested and confirmed working:
+The agent does all of this through tool calls. No filesystem, no terminal, no direct server access needed.
 
-| Operation | API Call | Result |
-|---|---|---|
-| Create backpack | `POST /v1/tools/` | Data stored in description |
-| Read backpack | `GET /v1/tools/{id}` | Returns description |
-| Update backpack | `PATCH /v1/tools/{id}` | Description updated |
-| Detach (free context) | `DELETE /v1/agents/{id}/tools/{tool_id}` | Tool leaves context |
-| Verify persistence | `GET /v1/tools/{id}` after detach | Data still there |
-| Reattach (load back) | `PATCH /v1/agents/{id}` with tool_ids | Data back in context |
-| Clear | `PATCH /v1/tools/{id}` with empty desc | Ready for reuse |
+## Verified
 
-Tested with multiple read/write cycles, detach/reattach, and data verification at every step. Zero failures.
-
-## How To Use
-
-### Create a backpack
-```bash
-POST /v1/tools/
-{
-  "source_code": "def my_task_state() -> str:\n    \"\"\"BACKPACK: {task: migration, step: 1, paths: [], decisions: []}\"\"\"\n    return \"Check description for cached data.\""
-}
-```
-The description is auto-extracted from the docstring.
-
-### Update your backpack
-```bash
-PATCH /v1/tools/{tool_id}
-{"description": "BACKPACK: {task: migration, step: 2, paths: [/src/db.py], decisions: [rename table]}"}
-```
-
-### Detach when not needed (free context tokens)
-```bash
-DELETE /v1/agents/{agent_id}/tools/{tool_id}
-```
-
-### Reattach when you need it back
-```bash
-PATCH /v1/agents/{agent_id}
-{"tool_ids": ["{tool_id}"]}
-```
+Tested on Letta platform, February 2026:
+- ✅ Create tool with data in description
+- ✅ Update description (multiple writes)
+- ✅ Detach from agent (data leaves context)
+- ✅ Data persists on server after detach
+- ✅ Reattach to agent (data returns to context, unchanged)
+- ✅ Sandbox has `LETTA_API_KEY` and `LETTA_AGENT_ID` environment variables
+- ✅ Sandbox can make HTTP requests to the Letta server
 
 ## ⚠️ Context Window Warning
 
@@ -73,25 +50,32 @@ PATCH /v1/agents/{agent_id}
 - **Detach immediately when done.** Don't leave them attached "just in case."
 - **Monitor your context usage.** If you're getting warnings, detach backpacks first.
 
-The whole point is: attached = in context, detached = free. If you attach everything, you've just made expensive memory blocks with extra steps.
+If you attach everything, you've just made expensive memory blocks with extra steps.
 
-## Self-Service with Forge Tool
+## ⚠️ Known Issues
 
-Backpack is most useful when the agent can create its own backpacks. [forge-tool](https://github.com/audrebytes/forge-tool) is a meta-tool that lets agents create, update, attach, and detach tools at runtime. With both, the agent manages its own working memory without human help.
+- **PATCH with `tool_ids` REPLACES, does not append.** If your agent uses forge-tool to attach a backpack, it must include ALL existing tool IDs in the request or it will lose its other tools. This is a critical gotcha. forge-tool must read the current tool list first, then append.
+- **Same applies to `block_ids`.** We discovered this by accidentally detaching all memory blocks during testing. The agent's identity blocks were removed. Letta Code rebuilt them, but ADE agents may not recover as gracefully.
+- **Sandbox environment varies.** We confirmed `LETTA_API_KEY`, `LETTA_AGENT_ID`, and HTTP access exist in the Letta Code sandbox. ADE sandbox may differ. Needs testing.
+- **Description field size limits unknown.** We haven't found the max size for a tool description. Keep it concise until this is tested.
+
+## Requires
+
+- [forge-tool](https://github.com/audrebytes/forge-tool) — the agent's hands. Without it, the agent can't create or manage backpacks.
 
 ## Related
 
-- [hold-my-beer](https://github.com/audrebytes/hold-my-beer) — Platform-agnostic file-based working memory (for agents WITH filesystem access)
-- [forge-tool](https://github.com/audrebytes/forge-tool) — Meta-tool that lets agents create tools at runtime (recommended companion)
+- [hold-my-beer](https://github.com/audrebytes/hold-my-beer) — File-based working memory for agents WITH filesystem access (platform-agnostic)
+- [forge-tool](https://github.com/audrebytes/forge-tool) — Meta-tool that lets agents create and manage tools at runtime
 
-## How This Relates to hold-my-beer
+## The Pattern
 
-Same pattern, different substrate:
+Same idea, different substrate:
 
-| Approach | Storage | Requires | Load/Unload |
-|---|---|---|---|
-| beer-cache | Filesystem | File access | Skill load/unload |
-| **backpack** | **Letta tool server** | **Letta API** | **Tool attach/detach** |
+| Situation | Storage | Load/Unload |
+|---|---|---|
+| Agent has filesystem | File on disk | Read file / unload skill |
+| **Agent trapped in ADE/chat** | **Tool description field** | **Attach / detach tool** |
 
 Both reduce to: agent-controlled read/write storage that lives outside the context window, loaded on demand.
 
