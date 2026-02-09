@@ -4,7 +4,7 @@
 
 **Detachable working memory for Letta agents trapped in ADE and chat interfaces.**
 
-Agents running in ADE or Letta's chat interface can't write files. They can't open a terminal. The only thing they can do is call their attached tools. If one of those tools can manage storage on their behalf, the agent gets working memory it can control itself.
+Agents running in ADE or Letta's chat interface can't write files. They have memory and archive blocks but they can't open a terminal or write to a file, drop the file and then reattach it at will. The only thing they can do is call their attached tools. If one of those tools can manage storage, even a small 'file storage' on their behalf, the agent gets working memory it can control itself which it can remove from the context window without destroying the data in the storage mechanism.
 
 Backpack uses the tool description field as a read/write scratchpad. The agent calls forge-tool to create a "backpack" tool, stores working state in its description, and attaches/detaches it to manage what's in context. When detached, the data stays on the server. When reattached, it comes back.
 
